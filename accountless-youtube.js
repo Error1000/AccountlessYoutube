@@ -34,6 +34,7 @@ function getSubscriptionVideosAndIconUrl(subscription) {
     let request = new XMLHttpRequest();
     request.onreadystatechange = function () {
         if (this.readyState === 4 && this.status === 200) {
+            try{
             var parser = new DOMParser();
             var documentToScrape = parser.parseFromString(request.responseText, "text/html");
             // Extract variable from scripts
@@ -41,11 +42,16 @@ function getSubscriptionVideosAndIconUrl(subscription) {
                 .map(script => script.innerText.match(/ytInitialData *= *(\{[\s\S]*\})/)).filter(res => res !== null)[0][1]; /* select first regex match result, then select the second match of that regex match result to get the result of the capture group */
 
             var ytInitialData = JSON.parse(jsonSring);
+            }catch(e){
+                console.log("Failed to scrape channel!");
+                console.log("Error: ", e);
+            }
+            
             try {
                 subIconUrl = ytInitialData["header"]["c4TabbedHeaderRenderer"]["avatar"]["thumbnails"].slice(-1)[0]["url"];
             } catch (e) {
                 console.log("Failed to get channel icon!");
-                console.log("Error: e");
+                console.log("Error: ", e);
             }
 
             var content = ytInitialData["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
@@ -179,12 +185,20 @@ window.addEventListener("pageshow", async () => {
     if ((new Date() - lastUpdated) / 1000 / 60 > 10) { // If more than 10 minutes since last update
         console.log("Updating feed!");
         feedVideos = [];
+        try{
+            document.querySelector("ytd-browse[page-subtype=\"subscriptions\"]:not([hidden])").innerText = "Updating feed, please wait ...";
+        }catch(e){
+            // It's not important to display update message
+        }
+
         for (var subscription in subscriptions) {
             var res = getSubscriptionVideosAndIconUrl(subscription);
             feedVideos = feedVideos.concat(res[0]);
             sortFeed();
             subscriptions[subscription] = res[1]; // Update channel icon
+            await sleep(Math.random()*100);
         }
+
         lastUpdated = new Date();
         await ensure(writeStorageData, () => { return sleep(500); });
     }
