@@ -15,7 +15,8 @@
 	"content_scripts": [
 		{
 			"matches": ["https://www.youtube.com/*"],
-			"js": ["main.js"]
+			"js": ["accountless-youtube.js"],
+			"css": ["injected-yt.css"]
 		}
 	]
 }

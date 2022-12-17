@@ -1,0 +1,128 @@
+/*feed*/
+
+div.injected-yt.feed {
+    margin-top: 10px;
+    margin-left: 10px;
+    width: 100%;
+    height: 100%;
+}
+
+div.injected-yt.feed-video {
+    float: left;
+    width: 250px;
+    height: 260px;
+    margin-left: 8px;
+    margin-right: 8px;
+    margin-bottom: 5px;
+}
+
+div.injected-yt.feed-video-thumbnail > a {
+    /* thumbnail link */
+    color: white;
+    text-decoration: none;
+}
+
+div.injected-yt.feed-video-thumbnail {
+    position: relative;
+}
+
+img.injected-yt.feed-video-thumbnail {
+    max-width: 100%;
+    max-height: 100%;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    object-fit: contain;
+}
+
+div.injected-yt.feed-video-thumbnail-duration {
+    position: absolute;
+
+    bottom: 10px;
+    right: 5px;
+
+    padding-left: 3px;
+    padding-right: 3px;
+
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.8);
+
+    font-family: sans-serif;
+    font-size: small;
+    font-weight: 400;
+
+    z-index: 10;
+}
+
+img.injected-yt.feed-video-metadata-channel-image {
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+}
+
+div.injected-yt.feed-video-metadata-title>a {
+    /* title link */
+    font-family: sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    color: white;
+}
+
+div.injected-yt.feed-video-metadata-title {
+    margin-bottom: 3px;
+}
+
+
+
+div.injected-yt.feed-video-metadata-channel-image {
+    margin-right: 10px;
+    margin-bottom: 100%;
+    float: left;
+}
+
+div.injected-yt.feed-video-metadata-channel>a {
+    /* channel link */
+    font-family: sans-serif;
+    font-size: 12px;
+    color: lightgray;
+    text-decoration: none;
+}
+
+div.injected-yt.feed-video-metadata-stats {
+    font-family: sans-serif;
+    color: lightgray;
+    font-size: 12px;
+}
+
+
+
+
+
+/*panel*/
+img.panel-channel-image {
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+}
+
+div.injected-yt.panel-channel {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-bottom: 11px;
+    margin-left: 12px;
+}
+
+div.injected-yt.panel-channel-title > a {
+    text-decoration: none;
+    font-family: sans-serif;
+    font-size: 14px;
+    color: white;
+}
+
+div.injected-yt.panel-channel-image {
+    display: flex;
+    align-items: center;
+    margin-right: 6px;
+    float: left;
+}
