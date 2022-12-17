@@ -38,7 +38,8 @@ function getSubscriptionVideosAndIconUrl(subscription) {
             var documentToScrape = parser.parseFromString(request.responseText, "text/html");
             // Extract variable from scripts
             var jsonSring = Array.from(documentToScrape.getElementsByTagName("script"))
-                .map(script => script.innerText.match(/ytInitialData *= *([^;]*);/)).filter(res => res !== null)[0][1]; /* select first regex match result, then select the second match of that regex match result to get the result of the capture group */
+                .map(script => script.innerText.match(/ytInitialData *= *(\{[\s\S]*\})/)).filter(res => res !== null)[0][1]; /* select first regex match result, then select the second match of that regex match result to get the result of the capture group */
+
             var ytInitialData = JSON.parse(jsonSring);
             try {
                 subIconUrl = ytInitialData["header"]["c4TabbedHeaderRenderer"]["avatar"]["thumbnails"].slice(-1)[0]["url"];
@@ -119,7 +120,7 @@ function lazyLoad(elements) {
 function localStorageExists() {
     try {
         // Try to access local storage, even if the key doesn't exist, it wont't throw an error
-        // So we can use try .. catch to detect if browser.storage.local is initialised
+        // So we can use try .. catch to detect if browser.storage.local is initialized
         browser.storage.local.get("this string can be anything");
         return true;
     } catch (e) {
