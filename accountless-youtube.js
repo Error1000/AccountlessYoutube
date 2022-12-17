@@ -1,8 +1,10 @@
 class Video {
-    constructor(channel, href, thumbnailImageURL, title, durationSecs, views, ageSecs) {
+    constructor(channel, href, thumbnailImageURL, thumbnailImageHeight, thumbnailImageWidth, title, durationSecs, views, ageSecs) {
         this.channel = channel;
         this.href = href;
         this.thumbnailImageURL = thumbnailImageURL;
+        this.thumbnailImageHeight = thumbnailImageHeight;
+        this.thumbnailImageWidth = thumbnailImageWidth;
         this.title = title;
         this.durationSecs = durationSecs;
         this.views = views;
@@ -14,6 +16,10 @@ class Video {
 var subscriptions = {};
 var feedVideos = [];
 var lastUpdated = new Date(0);
+var lazyImgObserver = new IntersectionObserver(lazyLoad, {
+    rootMargin: "100px",
+    threshold: 1.0
+});
 
 console.log("Accountless-youtube content script loaded!");
 
@@ -46,13 +52,16 @@ function getSubscriptionVideosAndIconUrl(subscription) {
             for (var video of content.slice(0, -1)/* the last element contains data on how to fetch extra videos */) {
                 try {
                     var video = video["richItemRenderer"]["content"]["videoRenderer"];
-                    var thumbnailUrl = video["thumbnail"]["thumbnails"].slice(-1)[0]["url"];
+                    var thumbnail = video["thumbnail"]["thumbnails"].slice(-2)[0];
+                    var thumbnailUrl = thumbnail["url"];
+                    var thumbnailWidth = thumbnail["width"];
+                    var thumbnailHeight = thumbnail["height"];
                     var id = video["navigationEndpoint"]["watchEndpoint"]["videoId"];
                     var title = video["title"]["runs"].map(run => run["text"]).join();
                     var duration = fromHHMMSS(video["lengthText"]["simpleText"]);
                     var views = parseInt(video["viewCountText"]["simpleText"].replace(/\D/g, ''));
                     var age = fromHumanAge(video["publishedTimeText"]["simpleText"]);
-                    subVideos.push(new Video(subscription, "/watch?v=" + id, thumbnailUrl, title, duration, views, age));
+                    subVideos.push(new Video(subscription, "/watch?v=" + id, thumbnailUrl, thumbnailHeight, thumbnailWidth, title, duration, views, age));
                 } catch (e) {
                     console.log("Failed to add a video!");
                     console.log("Error: ", e);
@@ -74,9 +83,17 @@ function removeSubscriptionVideos(subscription) {
 
 function getChannelName() {
     var handle = document.querySelector("yt-formatted-string[id=\"channel-handle\"]");
-    if (handle !== null) return handle.innerText;
+    if (handle !== null && handle !== undefined) return handle.innerText.slice(1);
+
     var videoChannelName = Array.from(document.querySelectorAll("yt-formatted-string.ytd-channel-name")).filter((match) => match.offsetParent !== null)[0];
-    if (videoChannelName !== null) return videoChannelName.getElementsByTagName("a")[0].href.split('/').slice(-1)[0];
+    if (videoChannelName !== null && videoChannelName !== undefined) {
+        var link = videoChannelName;
+        while (link.getElementsByTagName("a").length === 0) {
+            link = link.parentElement;
+        }
+        return link.getElementsByTagName("a")[0].href.split('/').slice(-1)[0].slice(1);
+    }
+
     return null;
 }
 
@@ -133,21 +150,34 @@ async function addStorageListener() {
         await ensure(readStorageData, () => { return sleep(1_000); })
         hijackSubscribeButton();
         await Promise.all([
-            ensure(hijackFeed, () => {return sleep(1_000)}),
-            ensure(hijackPanelSubs(), () => {return sleep(1_000);}),
-            
+            ensure(hijackFeed, () => { return sleep(1_000) }),
+            ensure(hijackPanelSubs, () => { return sleep(1_000); }),
+
         ])
     });
     return true;
 }
 
 
+function lazyLoad(elements) {
+    elements.forEach(entry => {
+        if (entry.intersectionRatio > 0) {
+            var image = entry.target;
+            // set the src attribute to trigger a load
+            image.src = image.dataset.src;
+
+            // stop observing this element. Our work here is done!
+            lazyImgObserver.unobserve(image);
+        };
+    });
+};
+
 
 window.addEventListener("pageshow", async () => {
     await ensure(readStorageData, () => { return sleep(500); });
     console.log("Using last updated date: ", lastUpdated);
 
-    if ((new Date() - lastUpdated) / 1000 / 60 > 1) { // If more than 1 minute since last update
+    if ((new Date() - lastUpdated) / 1000 / 60 > 10) { // If more than 10 minutes since last update
         console.log("Updating feed!");
         feedVideos = [];
         for (var subscription in subscriptions) {
@@ -310,7 +340,7 @@ function formatViews(views) {
 // Injection functions
 
 
-function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageSrc, durationText, title, channel, stats) {
+function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageSrc, thumbnailImageHeight, thumbnailImageWidth, durationText, title, channel, stats) {
     var injectedVideo = document.createElement("div");
     injectedVideo.classList.add("injected-yt", "feed-video");
     feed.appendChild(injectedVideo);
@@ -325,9 +355,11 @@ function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageS
         thumbnailLink.href = videoHref;
 
         var thumbnailImage = document.createElement("img");
-        thumbnailImage.classList.add("injected-yt", "feed-video-thumbnail");
+        thumbnailImage.classList.add("injected-yt", "feed-video-thumbnail", "lazy");
+        thumbnailImage.width = thumbnailImageWidth;
+        thumbnailImage.height = thumbnailImageHeight;
         thumbnailLink.appendChild(thumbnailImage);
-        thumbnailImage.src = thumbnailImageSrc;
+        thumbnailImage.dataset.src = thumbnailImageSrc;
 
         var injectedDuration = document.createElement("div");
         injectedDuration.classList.add("injected-yt", "feed-video-thumbnail-duration");
@@ -350,9 +382,9 @@ function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageS
         iconWrapper.appendChild(iconLink);
 
         var iconImage = document.createElement("img");
-        iconImage.classList.add("injected-yt", "feed-video-metadata-channel-image");
+        iconImage.classList.add("injected-yt", "feed-video-metadata-channel-image", "lazy");
         iconLink.appendChild(iconImage);
-        iconImage.src = iconImageSrc;
+        iconImage.dataset.src = iconImageSrc;
 
         var titleWrapper = document.createElement("div");
         titleWrapper.classList.add("injected-yt", "feed-video-metadata-title");
@@ -395,9 +427,9 @@ function injectPanelChannel(panel, channel, channelHref, iconURL) {
     iconLink.href = channelHref;
 
     var iconImage = document.createElement("img");
-    iconImage.classList.add("injected-yt", "panel-channel-image");
+    iconImage.classList.add("injected-yt", "panel-channel-image", "lazy");
     iconLink.appendChild(iconImage);
-    iconImage.src = iconURL;
+    iconImage.dataset.src = iconURL;
 
     var titleWrapper = document.createElement("div");
     titleWrapper.classList.add("injected-yt", "panel-channel-title");
@@ -425,8 +457,12 @@ function hijackFeed() {
                     if (lastUpdated !== new Date(0)) {
                         sinceLastUpdateSecs = (new Date() - lastUpdated) / 1000;
                     }
-                    injectVideo(injected_feed, video.href, "/@" + video.channel, subscriptions[video.channel], video.thumbnailImageURL, toHHMMSS(video.durationSecs), video.title, video.channel, formatViews(video.views) + " views • " + toHumanAge(video.ageSecs + sinceLastUpdateSecs) + " ago");
+                    injectVideo(injected_feed, video.href, "/@" + video.channel, subscriptions[video.channel], video.thumbnailImageURL, video.thumbnailImageHeight, video.thumbnailImageWidth, toHHMMSS(video.durationSecs), video.title, video.channel, formatViews(video.views) + " views • " + toHumanAge(video.ageSecs + sinceLastUpdateSecs) + " ago");
                 }
+
+                document.querySelectorAll('img.lazy').forEach(img => {
+                    lazyImgObserver.observe(img);
+                });
 
                 return true;
             }
@@ -456,13 +492,17 @@ async function hijackPanelSubs() {
         for (var sub in subscriptions) {
             injectPanelChannel(panelSubs, sub, "/@" + sub, subscriptions[sub]);
         }
+
+        document.querySelectorAll('img.lazy').forEach(img => {
+            lazyImgObserver.observe(img);
+        });
+
+        return true;
     } catch (e) {
         console.log("Failed to hijack panel subs!");
         console.log("Error: ", e);
         return false;
     }
-
-    return true;
 }
 
 async function hijackSubscribeButton() {
@@ -475,7 +515,6 @@ async function hijackSubscribeButton() {
             var buttonTextElement = theButton.querySelector("span[role=\"text\"]");
             var theChannel = getChannelName();
             if (theChannel === null) return false;
-            theChannel = theChannel.slice(1);
 
             if (subscriptions.hasOwnProperty(theChannel)) {
                 buttonTextElement.innerText = "Unsubscribe";

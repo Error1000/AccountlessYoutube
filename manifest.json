@@ -18,5 +18,11 @@
 			"js": ["accountless-youtube.js"],
 			"css": ["injected-yt.css"]
 		}
-	]
+	],
+
+	"browser_specific_settings": {
+		"gecko": {
+		  "id": "udreadanmihai@gmail.com"
+		}
+	  }
 }

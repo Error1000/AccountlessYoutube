@@ -10,7 +10,8 @@ div.injected-yt.feed {
 div.injected-yt.feed-video {
     float: left;
     width: 250px;
-    height: 260px;
+    height: 270px;
+    overflow: hidden;
     margin-left: 8px;
     margin-right: 8px;
     margin-bottom: 5px;
@@ -20,6 +21,8 @@ div.injected-yt.feed-video-thumbnail > a {
     /* thumbnail link */
     color: white;
     text-decoration: none;
+    display: block;
+    width: 100%;
 }
 
 div.injected-yt.feed-video-thumbnail {
@@ -27,8 +30,8 @@ div.injected-yt.feed-video-thumbnail {
 }
 
 img.injected-yt.feed-video-thumbnail {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: auto;
     margin-bottom: 6px;
     border-radius: 10px;
     object-fit: contain;
