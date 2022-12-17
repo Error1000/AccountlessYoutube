@@ -75,7 +75,7 @@ function removeSubscriptionVideos(subscription) {
 function getChannelName() {
     var handle = document.querySelector("yt-formatted-string[id=\"channel-handle\"]");
     if (handle !== null) return handle.innerText;
-    var videoChannelName = document.querySelector("yt-formatted-string.ytd-channel-name");
+    var videoChannelName = Array.from(document.querySelectorAll("yt-formatted-string.ytd-channel-name")).filter((match) => match.offsetParent !== null)[0];
     if (videoChannelName !== null) return videoChannelName.getElementsByTagName("a")[0].href.split('/').slice(-1)[0];
     return null;
 }
@@ -131,9 +131,12 @@ async function addStorageListener() {
     await browser.storage.onChanged.addListener(async () => {
         // Make sure we are in sync
         await ensure(readStorageData, () => { return sleep(1_000); })
-        hijackFeed();
         hijackSubscribeButton();
-        hijackPanelSubs();
+        await Promise.all([
+            ensure(hijackFeed, () => {return sleep(1_000)}),
+            ensure(hijackPanelSubs(), () => {return sleep(1_000);}),
+            
+        ])
     });
     return true;
 }
