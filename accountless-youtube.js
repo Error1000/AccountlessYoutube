@@ -101,6 +101,18 @@ function sortFeed() {
     feedVideos = feedVideos.sort((a, b) => { if (a.ageSecs < b.ageSecs) { return -1; } else if (a.ageSecs > b.ageSecs) { return 1; } else { return 0; } });
 }
 
+function lazyLoad(elements) {
+    elements.forEach(entry => {
+        if (entry.intersectionRatio > 0) {
+            var image = entry.target;
+            // set the src attribute to trigger a load
+            image.src = image.dataset.src;
+
+            // stop observing this element. Our work here is done!
+            lazyImgObserver.unobserve(image);
+        };
+    });
+};
 
 
 
@@ -159,20 +171,6 @@ async function addStorageListener() {
 }
 
 
-function lazyLoad(elements) {
-    elements.forEach(entry => {
-        if (entry.intersectionRatio > 0) {
-            var image = entry.target;
-            // set the src attribute to trigger a load
-            image.src = image.dataset.src;
-
-            // stop observing this element. Our work here is done!
-            lazyImgObserver.unobserve(image);
-        };
-    });
-};
-
-
 window.addEventListener("pageshow", async () => {
     await ensure(readStorageData, () => { return sleep(500); });
     console.log("Using last updated date: ", lastUpdated);
@@ -189,11 +187,12 @@ window.addEventListener("pageshow", async () => {
         lastUpdated = new Date();
         await ensure(writeStorageData, () => { return sleep(500); });
     }
+
     // Try to inject at a periodic interval, stopping once we have injected
     await Promise.all([
         ensure(hijackFeed, () => { return sleep(3_000); }),
-        ensure(hijackPanelSubs, () => { return sleep(1_000); }),
-        ensure(hijackSubscribeButton, () => { return sleep(1_000); })
+        ensure(hijackPanelSubs, () => { return sleep(5_000); }),
+        ensure(hijackSubscribeButton, () => { return sleep(2_000); })
     ]);
 }, false);
 
@@ -206,9 +205,9 @@ ensure(readStorageData, () => { return sleep(1_000); }).then(() => {
 });
 
 // Subscribe buttons may show up when searching
-window.setInterval(hijackSubscribeButton, 10_000);
+window.setInterval(hijackSubscribeButton, 5_000);
 
-ensure(addStorageListener, () => { return sleep(500); });
+ensure(addStorageListener, () => { return sleep(1_000); });
 
 
 /////////////////////////////////////////////////////////////////////
@@ -358,6 +357,8 @@ function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageS
         thumbnailImage.classList.add("injected-yt", "feed-video-thumbnail", "lazy");
         thumbnailImage.width = thumbnailImageWidth;
         thumbnailImage.height = thumbnailImageHeight;
+        thumbnailImage.setAttribute("loading", "lazy");
+        thumbnailImage.setAttribute("fetchpriority", "low");
         thumbnailLink.appendChild(thumbnailImage);
         thumbnailImage.dataset.src = thumbnailImageSrc;
 
@@ -383,6 +384,8 @@ function injectVideo(feed, videoHref, channelHref, iconImageSrc, thumbnailImageS
 
         var iconImage = document.createElement("img");
         iconImage.classList.add("injected-yt", "feed-video-metadata-channel-image", "lazy");
+        iconImage.setAttribute("loading", "lazy");
+        iconImage.setAttribute("fetchpriority", "low");
         iconLink.appendChild(iconImage);
         iconImage.dataset.src = iconImageSrc;
 
@@ -428,6 +431,8 @@ function injectPanelChannel(panel, channel, channelHref, iconURL) {
 
     var iconImage = document.createElement("img");
     iconImage.classList.add("injected-yt", "panel-channel-image", "lazy");
+    iconImage.setAttribute("loading", "lazy");
+    iconImage.setAttribute("fetchpriority", "low");
     iconLink.appendChild(iconImage);
     iconImage.dataset.src = iconURL;
 
@@ -472,6 +477,7 @@ function hijackFeed() {
         console.log("Error: ", e);
         return false;
     }
+
     return false;
 }
 
@@ -503,6 +509,8 @@ async function hijackPanelSubs() {
         console.log("Error: ", e);
         return false;
     }
+
+    return false;
 }
 
 async function hijackSubscribeButton() {
@@ -524,7 +532,7 @@ async function hijackSubscribeButton() {
 
             theButton.onclick = async () => {
                 // Make sure we are in sync
-                await ensure(readStorageData, () => { return sleep(500); });
+                await ensure(readStorageData, () => { return sleep(1_000); });
                 if (buttonTextElement.innerText === "Subscribe") {
                     var res = getSubscriptionVideosAndIconUrl(theChannel);
                     feedVideos = feedVideos.concat(res[0]);
@@ -536,7 +544,7 @@ async function hijackSubscribeButton() {
                     removeSubscriptionVideos(theChannel);
                     buttonTextElement.innerText = "Subscribe"
                 }
-                ensure(writeStorageData, () => { return sleep(500); });
+                ensure(writeStorageData, () => { return sleep(1_000); });
             };
             return true;
         }
@@ -583,5 +591,6 @@ async function waitForDomChange() {
 async function ensure(f, waitingFunction) {
     while ((await f()) === false) {
         await waitingFunction();
+        await sleep(100);
     }
 }
